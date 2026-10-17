@@ -1,0 +1,58 @@
+# ==========================================
+# SumaQT Studio - Git Ignore
+# ==========================================
+
+# --- Python & Backend ---
+backend/venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+*.env
+*.env.*
+!backend/.env.example
+
+# --- Flutter & Dart ---
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.pub-cache/
+frontend/.pub/
+frontend/build/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+frontend/android/app/debug/
+frontend/android/app/profile/
+frontend/android/app/release/
+app.*.symbols
+app.*.map.json
+
+# --- IDEs & Editors ---
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# --- OS Artifacts ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# --- Agent & Build Cache ---
+.archify/
+*.log
+*.tmp
