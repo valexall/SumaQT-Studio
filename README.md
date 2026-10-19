@@ -92,7 +92,6 @@ SumaQT Studio/
    flutter run -d chrome
    ```
 
----
 
 ## 🛠️ Tecnologías Utilizadas
 

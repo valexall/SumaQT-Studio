@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from modulos.usuarios import rutas as rutas_usuarios
 from modulos.procesamiento_imagen import rutas as rutas_imagen
+from modulos.ordenes import rutas as rutas_ordenes
 
 app = FastAPI(
     title="SumaQt Studio API",
@@ -27,6 +28,11 @@ app.include_router(
     rutas_imagen.router,
     prefix="/api/v1/imagenes",
     tags=["Procesamiento de Imagen"],
+)
+app.include_router(
+    rutas_ordenes.router,
+    prefix="/api/v1/ordenes",
+    tags=["Órdenes de Trabajo"],
 )
 
 

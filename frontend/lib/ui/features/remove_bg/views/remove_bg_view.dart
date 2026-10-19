@@ -11,9 +11,14 @@ import 'widgets/image_panel.dart';
 /// Widget "dumb": sólo renderiza el estado expuesto por [RemoveBgViewModel].
 /// Usa [ListenableBuilder] para reconstruirse ante cada [notifyListeners].
 class RemoveBgView extends StatelessWidget {
-  const RemoveBgView({super.key, required this.viewModel});
+  const RemoveBgView({
+    super.key,
+    required this.viewModel,
+    this.mostrarAppBar = true,
+  });
 
   final RemoveBgViewModel viewModel;
+  final bool mostrarAppBar;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +27,7 @@ class RemoveBgView extends StatelessWidget {
       builder: (context, _) {
         return Scaffold(
           backgroundColor: AppColors.surface,
-          appBar: _buildAppBar(),
+          appBar: mostrarAppBar ? _buildAppBar() : null,
           body: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(
