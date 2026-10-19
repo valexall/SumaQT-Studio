@@ -300,7 +300,7 @@ function fileIdentity(stat) {
 }
 
 function identityMatches(stat, identity, { directory = false } = {}) {
-  return stat.dev === identity.device
+  return (process.platform === 'win32' || stat.dev === identity.device)
     && stat.ino === identity.inode
     && Number(stat.mode & 0o777n) === identity.mode
     && (directory ? stat.isDirectory() : stat.isFile())
@@ -308,7 +308,7 @@ function identityMatches(stat, identity, { directory = false } = {}) {
 }
 
 function evidenceIdentityMatches(actual, expected, expectedLinks = expected?.links ?? 1) {
-  return actual?.device === expected?.device
+  return (process.platform === 'win32' || actual?.device === expected?.device)
     && actual?.inode === expected?.inode
     && actual?.mode === expected?.mode
     && BigInt(actual?.links ?? 0) === BigInt(expectedLinks);

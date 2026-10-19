@@ -27,6 +27,11 @@ function entryType(metadata) {
   return 'other';
 }
 
+function sameDevice(a, b) {
+  if (process.platform === 'win32' && (a === 0n || b === 0n || a === '0' || b === '0')) return true;
+  return a === b;
+}
+
 // Windows lstat can fall back to directory enumeration when a file handle
 // cannot be opened, and that fallback reports a synthetic link count of one.
 // Treat handle-backed fstat as authoritative and fail closed when it cannot be
@@ -70,8 +75,8 @@ function captureRegularFileHandle(filePath, initial, subject) {
   }
   if (!handle.isFile() || !current.isFile()
     || handle.ino === 0n || current.ino === 0n
-    || handle.dev !== initial.dev || handle.ino !== initial.ino
-    || current.dev !== handle.dev || current.ino !== handle.ino) {
+    || !sameDevice(handle.dev, initial.dev) || handle.ino !== initial.ino
+    || !sameDevice(current.dev, handle.dev) || current.ino !== handle.ino) {
     return relation('unknown', `${subject}-changed-during-inspection`, {
       [pathKey]: filePath,
     });
@@ -191,7 +196,7 @@ function descriptorDigest(descriptor, expectedSize, subject, filePath, includeCo
 }
 
 function sameHandleState(left, right) {
-  return left.dev === right.dev
+  return sameDevice(left.dev, right.dev)
     && left.ino === right.ino
     && left.nlink === right.nlink
     && left.mode === right.mode
@@ -229,9 +234,9 @@ function inspectRegularFileDescriptor({
   if (beforeHandle.ino === 0n || beforePath.ino === 0n) {
     return relation('unknown', `${subject}-identity-unavailable`, { filePath });
   }
-  if (beforeHandle.dev !== identity.device
+  if (!sameDevice(beforeHandle.dev, identity.device)
     || beforeHandle.ino !== identity.inode
-    || beforePath.dev !== beforeHandle.dev
+    || !sameDevice(beforePath.dev, beforeHandle.dev)
     || beforePath.ino !== beforeHandle.ino) {
     return relation(phase === 'inspection' ? 'unknown' : 'different',
       `${subject}-${phase === 'inspection' ? 'changed-during-inspection' : 'identity-changed'}`,
@@ -269,8 +274,8 @@ function inspectRegularFileDescriptor({
   }
   if (!afterHandle.isFile() || !afterPath.isFile()
     || afterHandle.ino === 0n || afterPath.ino === 0n
-    || afterHandle.dev !== identity.device || afterHandle.ino !== identity.inode
-    || afterPath.dev !== afterHandle.dev || afterPath.ino !== afterHandle.ino) {
+    || !sameDevice(afterHandle.dev, identity.device) || afterHandle.ino !== identity.inode
+    || !sameDevice(afterPath.dev, afterHandle.dev) || afterPath.ino !== afterHandle.ino) {
     return relation(phase === 'inspection' ? 'unknown' : 'different',
       `${subject}-${phase === 'inspection' ? 'changed-during-inspection' : 'identity-changed'}`,
       { filePath });
@@ -346,7 +351,7 @@ export function captureRegularFileBinding(filePath, {
   }
   const identity = { device: initial.dev, inode: initial.ino };
   if (expectedIdentity !== undefined
-    && (identity.device !== expectedIdentity.device
+    && (!sameDevice(identity.device, expectedIdentity.device)
       || identity.inode !== expectedIdentity.inode)) {
     const closeFailure = closeCapturedDescriptor(descriptor, subject, resolvedPath);
     return closeFailure || relation('different', `${subject}-identity-changed`, {
@@ -607,7 +612,7 @@ function createPublicationRecoveryRecord(directory, snapshot, previous) {
   }
   if (!directoryMetadata.isDirectory() || directoryMetadata.ino === 0n
     || !parentMetadata.isDirectory()
-    || parentMetadata.dev !== slot.parentDevice || parentMetadata.ino !== slot.parentInode
+    || !sameDevice(parentMetadata.dev, slot.parentDevice) || parentMetadata.ino !== slot.parentInode
     || !/^\.archify-remove-[a-f\d]{32}$/.test(path.basename(directory))) {
     return relation('unknown', 'publication-recovery-directory-invalid', {
       recoveryDirectory: directory,
@@ -855,8 +860,8 @@ export function quarantineRemoveRegularFileBinding(binding, filePath, {
       error,
     );
   }
-  if (restored.dev !== displaced.dev || restored.ino !== displaced.ino
-    || retained.dev !== displaced.dev || retained.ino !== displaced.ino
+  if (!sameDevice(restored.dev, displaced.dev) || restored.ino !== displaced.ino
+    || !sameDevice(retained.dev, displaced.dev) || retained.ino !== displaced.ino
     || restored.nlink !== displaced.nlink + 1n
     || retained.nlink !== displaced.nlink + 1n) {
     return removalRecovery(
@@ -889,7 +894,7 @@ export function quarantineRemoveRegularFileBinding(binding, filePath, {
       { filePath: resolvedPath },
     );
   }
-  if (restored.dev !== displaced.dev || restored.ino !== displaced.ino
+  if (!sameDevice(restored.dev, displaced.dev) || restored.ino !== displaced.ino
     || restored.nlink !== displaced.nlink) {
     const cleanup = removeEmptyAfterFileRemoval();
     return cleanup || relation('different', `${subject}-replacement-final-identity-changed`, {
@@ -1505,7 +1510,7 @@ function requestedEntryMatches(left, right) {
   if (left.kind !== right.kind) return false;
   return left.kind === 'absent'
     || (left.entryType === right.entryType
-      && left.device === right.device
+      && sameDevice(left.device, right.device)
       && left.inode === right.inode
       && (left.entryType !== 'symbolic-link'
         || (left.changedAtNs === right.changedAtNs
@@ -1590,7 +1595,7 @@ export function verifyAtomicOutput(snapshot) {
     });
   }
   if (previousTarget.kind === 'file'
-    && (currentTarget.target.device !== previousTarget.device
+    && (!sameDevice(currentTarget.target.device, previousTarget.device)
       || currentTarget.target.inode !== previousTarget.inode)) {
     return relation('different', 'target-identity-changed', {
       commitPath: previousSlot.commitPath,
@@ -1694,14 +1699,14 @@ function verifyPublicationRecoveryDirectory(directory, metadata, record) {
   // path-contract-allow: lexical-capability -- The generated private-directory component is an exact record-bound capability.
   if (path.basename(directory) !== record.recovery.name
     || !parentMetadata.isDirectory()
-    || parentMetadata.dev !== record.target.parentDevice
+    || !sameDevice(parentMetadata.dev, record.target.parentDevice)
     || parentMetadata.ino !== record.target.parentInode) {
     return relation('different', 'publication-recovery-directory-not-target-child', {
       recoveryDirectory: directory,
       expectedParentPath: record.target.parentPath,
     });
   }
-  if (metadata.dev !== record.recovery.device || metadata.ino !== record.recovery.inode) {
+  if (!sameDevice(metadata.dev, record.recovery.device) || metadata.ino !== record.recovery.inode) {
     return relation('different', 'publication-recovery-directory-identity-changed', {
       recoveryDirectory: directory,
     });

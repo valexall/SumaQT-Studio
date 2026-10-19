@@ -1,6 +1,11 @@
 fastapi
 uvicorn
-supabase
 pydantic
 pydantic-settings
+pydantic[email]
 python-dotenv
+pillow
+rembg
+sqlalchemy[asyncio]
+aiomysql
+pymysql
