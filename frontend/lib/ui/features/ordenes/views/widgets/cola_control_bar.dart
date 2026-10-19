@@ -13,7 +13,7 @@ class ColaControlBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final archivos = viewModel.archivos;
+    final archivos = viewModel.archivosDeLaOrden;
     final total = archivos.length;
     final completados = archivos.where((a) => a.estado == EstadoSubida.completado).length;
     final enProceso = archivos.where((a) => a.estado == EstadoSubida.procesando).length;

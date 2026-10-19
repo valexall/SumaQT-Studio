@@ -18,6 +18,11 @@ class Configuracion(BaseSettings):
             f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DB}"
         )
 
+    # ── Almacenamiento local ──────────────────────────────────────────────────
+    # Carpeta donde se guardan los archivos de las órdenes (original + procesado).
+    # Se sirve al cliente mediante el montaje estático `/archivos`.
+    STORAGE_DIR: str = "almacenamiento"
+
     # ── JWT Auth ─────────────────────────────────────────────────────────────
     JWT_SECRET: str = "sumaqt_studio_super_secret_jwt_key_2026_xyz"
     JWT_ALGORITHM: str = "HS256"

@@ -13,7 +13,8 @@ SumaQT Studio/
 ├── backend/                  # API REST con FastAPI (Monolito Modular)
 │   ├── aplicacion/           # Punto de entrada y configuración de la app
 │   ├── modulos/              # Módulos de dominio (usuarios, procesamiento_imagen, etc.)
-│   ├── nucleo/               # Configuraciones centrales y clientes externos (Supabase, etc.)
+│   ├── nucleo/               # Configuraciones centrales, seguridad (PBKDF2/JWT) y base de datos (MySQL)
+│   ├── sql/                  # Scripts DDL de inicialización de la base de datos
 │   ├── requirements.txt      # Dependencias de Python
 │   └── .env.example          # Plantilla de variables de entorno
 │
@@ -22,11 +23,23 @@ SumaQT Studio/
 │   │   ├── core/             # Configuración global, temas y constantes
 │   │   ├── data/             # Servicios HTTP, repositorios y file pickers
 │   │   ├── domain/           # Modelos de datos y entidades de negocio
-│   │   └── ui/               # Vistas, ViewModels y widgets reutilizables
+│   │   └── ui/               # Vistas (Auth, Remove BG), ViewModels y widgets reutilizables
 │   └── pubspec.yaml          # Dependencias y assets de Flutter
 │
 └── .agents/                  # Habilidades y agentes personalizados de desarrollo
 ```
+
+---
+
+## 👥 Procesos End-to-End (E2E) y Diagramas de Arquitectura
+
+A continuación se detalla la relación de procesos E2E implementados en la plataforma, sus límites de ejecución, módulos y actores involucrados, junto a los enlaces directos a sus respectivos diagramas interactivos (*Archify*):
+
+| Integrante | Proceso E2E | Inicio y Fin | Actores o Módulos Involucrados | Enlace al Diagrama |
+| :--- | :--- | :--- | :--- | :--- |
+| **Valentin Arenaza Ccaccya** (`@astr4vale`) | **Eliminación Inteligente de Fondo (*Remove BG*)** | **Inicio:** Usuario carga una imagen (JPEG/PNG/WEBP) en la interfaz.<br>**Fin:** Usuario visualiza y descarga la imagen en formato PNG transparente sin fondo. | • **Actor:** Usuario<br>• **Frontend:** Flutter UI (`HeroSection`, `UploadCard`, `RemoveBgViewModel`)<br>• **Backend:** FastAPI (`modulos/procesamiento_imagen`), Motor IA (`rembg` con U2-Net en ONNX Runtime)<br>• **Base de Datos:** MySQL Server (`sumaqt_studio` vía SQLAlchemy / `aiomysql`) | [📊 Ver Diagrama de Secuencia E2E](.archify/sequence-quitar-fondo-e2e-20261018-220000/quitar-fondo-e2e.html) |
+| **Roger Paniura Ramos** (`@astr4vale`) | **Registro, Login y Autorización JWT** | **Inicio:** Usuario ingresa credenciales en `AuthView` (Login / Registro).<br>**Fin:** Usuario autenticado con JWT Bearer token, sesión establecida en Flutter y acceso concedido al editor. | • **Actor:** Usuario<br>• **Frontend:** Flutter UI (`AuthView`, `AuthViewModel`, `AuthRepository`, `AuthService`)<br>• **Backend:** FastAPI (`modulos/usuarios`), Núcleo Criptográfico (`nucleo/seguridad.py` con PBKDF2-HMAC-SHA256 y PyJWT)<br>• **Base de Datos:** MySQL Server (tabla `usuarios`) | [🔐 Ver Diagrama de Secuencia Auth](.archify/sequence-auth-e2e-20261018-223000/auth-e2e.html) |
+| Yerymay Rayme Pimentel | Orden de trabajo | **Inicio:** el cliente crea la solicitud (POST /api/v1/ordenes con proyecto, cliente, email y nº de imágenes). **Fin:** la orden queda entregada con url_resultado y GET /api/v1/ordenes/metricas devuelve el resultado medible (órdenes cerradas, imágenes procesadas, tiempo promedio). | Cliente; App Flutter (views/ViewModels/widgets de ordenes); Backend FastAPI por capas (rutas → servicio → repositorio); MySQL 8 (tablas ordenes y archivos_orden); almacenamiento local (STORAGE_DIR, servido en /archivos); motor rembg (ONNX local, sin sistemas externos) | 🧭 [Ver diagrama](orden-trabajo.html).|
 
 ---
 
@@ -63,9 +76,16 @@ SumaQT Studio/
    ```bash
    cp .env.example .env
    ```
-   *(Edita `.env` con tus credenciales de Supabase si corresponde)*.
+   *(Edita `.env` con tus credenciales de MySQL y clave secreta de JWT)*.
 
-5. Inicia el servidor de desarrollo:
+5. Ejecuta el script SQL de inicialización en MySQL:
+   ```bash
+   # Puedes importar el archivo sql/init.sql en tu cliente MySQL o phpMyAdmin
+   # O directamente por consola:
+   mysql -u root -p < sql/init.sql
+   ```
+
+6. Inicia el servidor de desarrollo:
    ```bash
    uvicorn aplicacion.main:app --reload --port 8000
    ```
@@ -92,12 +112,13 @@ SumaQT Studio/
    flutter run -d chrome
    ```
 
+---
 
 ## 🛠️ Tecnologías Utilizadas
 
-- **Backend**: [FastAPI](https://fastapi.tiangolo.com/), [Pydantic Settings](https://docs.pydantic.dev/), [Supabase Python](https://supabase.com/docs/reference/python), [Uvicorn](https://www.uvicorn.org/)
-- **Frontend**: [Flutter](https://flutter.dev/), [Dart](https://dart.dev/), arquitectura MVVM / Clean Architecture por capas
-- **Control de Versiones**: Git & GitHub
+- **Backend**: [FastAPI](https://fastapi.tiangolo.com/), [SQLAlchemy](https://www.sqlalchemy.org/) (AsyncIO), [aiomysql](https://github.com/aio-libs/aiomysql), [MySQL](https://www.mysql.com/), [rembg](https://github.com/danielgatis/rembg) (U2-Net / ONNX), [PyJWT](https://pyjwt.readthedocs.io/), [Uvicorn](https://www.uvicorn.org/)
+- **Frontend**: [Flutter](https://flutter.dev/), [Dart](https://dart.dev/), arquitectura MVVM / Clean Architecture por capas, [Provider](https://pub.dev/packages/provider), [Google Fonts](https://pub.dev/packages/google_fonts)
+- **Diagramas de Arquitectura**: [Archify](https://github.com/archify) (SVG interactivo con animación trace)
 
 ---
 

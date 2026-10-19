@@ -1,54 +1,77 @@
-from typing import Literal, Optional
+"""
+modulos/ordenes/modelos.py
+--------------------------
+Modelos ORM SQLAlchemy para las tablas `ordenes` y `archivos_orden`.
 
-from pydantic import BaseModel, EmailStr, Field
+Este archivo es el único que conoce la estructura de las tablas.
+El resto de las capas (servicio, rutas) interactúan a través
+de los esquemas Pydantic y el repositorio.
+"""
 
-EstadoOrden = Literal["pendiente", "procesando", "entregada"]
-EstadoArchivo = Literal["procesado", "error"]
+from datetime import datetime
 
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-class OrdenCreate(BaseModel):
-    nombre_proyecto: str = Field(min_length=3, max_length=120)
-    cliente_nombre: str = Field(min_length=2, max_length=120)
-    cliente_email: EmailStr
-    total_imagenes: int = Field(gt=0, le=50)
-
-
-class OrdenUpdate(BaseModel):
-    nombre_proyecto: Optional[str] = Field(default=None, min_length=3, max_length=120)
-    cliente_nombre: Optional[str] = Field(default=None, min_length=2, max_length=120)
-    cliente_email: Optional[EmailStr] = None
+from nucleo.base_datos import Base
 
 
-class ArchivoOut(BaseModel):
-    id: str
-    orden_id: str
-    nombre_original: str
-    storage_path_original: Optional[str] = None
-    storage_path_resultado: Optional[str] = None
-    url_original: Optional[str] = None
-    url_resultado: Optional[str] = None
-    imagen_base64: Optional[str] = None
-    estado: EstadoArchivo
-    created_at: str
+class Orden(Base):
+    """Entidad persistida en la tabla `ordenes` de MySQL."""
+
+    __tablename__ = "ordenes"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    nombre_proyecto: Mapped[str] = mapped_column(String(120), nullable=False)
+    cliente_nombre: Mapped[str] = mapped_column(String(120), nullable=False)
+    cliente_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    total_imagenes: Mapped[int] = mapped_column(Integer, nullable=False)
+    imagenes_procesadas: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pendiente"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    cerrada_en: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    archivos: Mapped[list["ArchivoOrden"]] = relationship(
+        back_populates="orden",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+        order_by="ArchivoOrden.created_at",
+    )
+
+    def __repr__(self) -> str:
+        return f"<Orden id={self.id} estado={self.estado!r}>"
 
 
-class OrdenOut(BaseModel):
-    id: str
-    nombre_proyecto: str
-    cliente_nombre: str
-    cliente_email: str
-    total_imagenes: int
-    imagenes_procesadas: int
-    estado: EstadoOrden
-    created_at: str
-    cerrada_en: Optional[str] = None
+class ArchivoOrden(Base):
+    """Imagen asociada a una orden (original y resultado sin fondo)."""
 
+    __tablename__ = "archivos_orden"
 
-class OrdenDetalleOut(OrdenOut):
-    archivos: list[ArchivoOut] = []
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    orden_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ordenes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    nombre_original: Mapped[str] = mapped_column(String(255), nullable=False)
+    storage_path_original: Mapped[str | None] = mapped_column(String(500))
+    storage_path_resultado: Mapped[str | None] = mapped_column(String(500))
+    estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="procesado"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
 
+    orden: Mapped["Orden"] = relationship(back_populates="archivos")
 
-class MetricasOut(BaseModel):
-    ordenes_cerradas: int = 0
-    imagenes_procesadas: int = 0
-    seg_promedio_entrega: float = 0.0
+    def __repr__(self) -> str:
+        return f"<ArchivoOrden id={self.id} orden_id={self.orden_id}>"

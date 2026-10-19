@@ -177,6 +177,10 @@ class OrdenesView extends StatelessWidget {
           MetricasPanel(metricas: viewModel.metricas!),
           const SizedBox(height: 24),
         ],
+        if (viewModel.hayColaActiva) ...[
+          _ColaActivaBanner(viewModel: viewModel),
+          const SizedBox(height: 16),
+        ],
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -269,6 +273,7 @@ class OrdenesView extends StatelessWidget {
 
   Widget _buildWizard(BuildContext context) {
     final orden = viewModel.ordenSeleccionada!;
+    final archivos = viewModel.archivosDeLaOrden;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -291,7 +296,7 @@ class OrdenesView extends StatelessWidget {
         ),
         const SizedBox(height: 20),
 
-        // ── Paso 2: imágenes → rembg → Supabase Storage ──
+        // ── Paso 2: imágenes → rembg → almacenamiento local ──
         SeccionPaso(
           numero: 2,
           titulo: 'Imágenes del proyecto',
@@ -313,9 +318,9 @@ class OrdenesView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (viewModel.archivos.isNotEmpty)
+              if (archivos.isNotEmpty)
                 ColaControlBar(viewModel: viewModel),
-              if (viewModel.archivos.isEmpty)
+              if (archivos.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(20),
                   child: Text(
@@ -333,15 +338,15 @@ class OrdenesView extends StatelessWidget {
                     mainAxisSpacing: 14,
                     mainAxisExtent: 295,
                   ),
-                  itemCount: viewModel.archivos.length,
+                  itemCount: archivos.length,
                   itemBuilder: (context, index) {
-                    final archivo = viewModel.archivos[index];
+                    final archivo = archivos[index];
                     return ArchivoLoteCard(
                       archivo: archivo,
                       numero: index + 1,
                       onComparar: () => DialogCompararLote.mostrar(
                         context,
-                        archivos: viewModel.archivos,
+                        archivos: archivos,
                         indiceInicial: index,
                         onDescargar: viewModel.descargarResultado,
                       ),
@@ -355,15 +360,15 @@ class OrdenesView extends StatelessWidget {
                 ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: viewModel.archivos.length,
+                  itemCount: archivos.length,
                   itemBuilder: (context, index) {
-                    final archivo = viewModel.archivos[index];
+                    final archivo = archivos[index];
                     return ArchivoItem(
                       archivo: archivo,
                       numero: index + 1,
                       onComparar: () => DialogCompararLote.mostrar(
                         context,
-                        archivos: viewModel.archivos,
+                        archivos: archivos,
                         indiceInicial: index,
                         onDescargar: viewModel.descargarResultado,
                       ),
@@ -483,6 +488,72 @@ class _ListaVacia extends StatelessWidget {
             ),
             child: const Text('Crear primera orden'),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Aviso compacto en el dashboard: procesos de la cola que siguen
+/// corriendo en segundo plano mientras el usuario navega.
+class _ColaActivaBanner extends StatelessWidget {
+  const _ColaActivaBanner({required this.viewModel});
+
+  final OrdenesViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final pendientes = viewModel.pendientesEnCola;
+    final enCurso = viewModel.procesando ? 1 : 0;
+    final total = pendientes + enCurso;
+    if (total == 0) return const SizedBox.shrink();
+
+    String? ordenIdEnVuelo;
+    for (final a in viewModel.archivos) {
+      final enVuelo =
+          a.estado == EstadoSubida.enEspera || a.estado == EstadoSubida.procesando;
+      if (enVuelo && a.ordenId != null) {
+        ordenIdEnVuelo = a.ordenId;
+        break;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              viewModel.procesando
+                  ? '$total imagen(es) de la cola siguen procesándose en segundo plano…'
+                  : '$total imagen(es) en cola de procesamiento…',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+          ),
+          if (ordenIdEnVuelo != null)
+            TextButton.icon(
+              onPressed: () => viewModel.seleccionarOrden(ordenIdEnVuelo!),
+              icon: const Icon(Icons.visibility_outlined, size: 16, color: AppColors.primary),
+              label: const Text(
+                'Ver progreso',
+                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+              ),
+            ),
         ],
       ),
     );

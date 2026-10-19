@@ -81,6 +81,18 @@ class OrdenesViewModel extends ChangeNotifier {
   /// True mientras la cola serial está procesando imágenes.
   bool get procesando => _procesandoCola;
 
+  /// True si aún hay trabajo local en vuelo (cola o proceso en curso).
+  bool get hayColaActiva =>
+      _archivos.any((a) => a.estado == EstadoSubida.enEspera || a.estado == EstadoSubida.procesando);
+
+  /// Archivos visibles para la orden seleccionada: los que trae el servidor
+  /// más los procesos locales en vuelo de esa misma orden.
+  List<ArchivoEnProceso> get archivosDeLaOrden {
+    final orden = _ordenSeleccionada;
+    if (orden == null) return const [];
+    return _archivos.where((a) => a.ordenId == orden.id).toList();
+  }
+
   bool _mostrandoFormulario = false;
   bool get mostrandoFormulario => _mostrandoFormulario;
 
@@ -203,6 +215,16 @@ class OrdenesViewModel extends ChangeNotifier {
   Future<void> _abrirOrden(String ordenId) async {
     final orden = await _repository.obtenerDetalle(ordenId);
     _ordenSeleccionada = orden;
+
+    // Procesos locales aún en cola o en curso (de cualquier orden): no
+    // existen en el servidor hasta completarse, así que se conservan al
+    // recargar (sobreviven a la navegación al dashboard y de vuelta).
+    final enVuelo = _archivos
+        .where(
+          (a) => a.estado == EstadoSubida.enEspera || a.estado == EstadoSubida.procesando,
+        )
+        .toList();
+
     _archivos.clear();
     for (final archivo in orden.archivos) {
       if (archivo.estado == EstadoArchivo.procesado) {
@@ -232,11 +254,17 @@ class OrdenesViewModel extends ChangeNotifier {
         );
       }
     }
+    _archivos.addAll(enVuelo);
   }
 
   void volverALista() {
     _ordenSeleccionada = null;
-    _archivos.clear();
+    // Conserva los procesos locales aún en vuelo (la cola sigue corriendo
+    // en segundo plano); descarta los de estado terminal, que se recargan
+    // desde el servidor al volver a abrir la orden.
+    _archivos.removeWhere(
+      (a) => a.estado == EstadoSubida.completado || a.estado == EstadoSubida.fallido,
+    );
     _error = null;
     _aviso = null;
     notifyListeners();
@@ -284,8 +312,9 @@ class OrdenesViewModel extends ChangeNotifier {
       await _repository.eliminarOrden(ordenId);
       if (_ordenSeleccionada?.id == ordenId) {
         _ordenSeleccionada = null;
-        _archivos.clear();
       }
+      // Descarta también los procesos locales en vuelo de la orden eliminada.
+      _archivos.removeWhere((a) => a.ordenId == ordenId);
       _aviso = 'Orden eliminada correctamente.';
       await cargarOrdenes();
     } on OrdenesServiceException catch (e) {

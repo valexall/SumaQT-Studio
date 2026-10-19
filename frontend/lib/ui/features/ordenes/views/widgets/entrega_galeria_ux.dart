@@ -16,7 +16,7 @@ class EntregaGaleriaUx extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final orden = viewModel.ordenSeleccionada!;
-    final completados = viewModel.archivos
+    final completados = viewModel.archivosDeLaOrden
         .where((a) => a.estado == EstadoSubida.completado)
         .toList();
     final puedeCerrar = !orden.estaEntregada && orden.imagenesProcesadas > 0 && !viewModel.enviando;

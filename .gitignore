@@ -18,6 +18,9 @@ htmlcov/
 *.env.*
 !backend/.env.example
 
+# Archivos locales generados por el backend (imágenes de órdenes)
+backend/almacenamiento/
+
 # --- Flutter & Dart ---
 frontend/.dart_tool/
 frontend/.flutter-plugins
