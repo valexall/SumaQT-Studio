@@ -18,6 +18,11 @@ class Configuracion(BaseSettings):
             f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DB}"
         )
 
+    # ── JWT Auth ─────────────────────────────────────────────────────────────
+    JWT_SECRET: str = "sumaqt_studio_super_secret_jwt_key_2026_xyz"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_MINUTES: int = 60 * 24 * 7  # 7 días
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

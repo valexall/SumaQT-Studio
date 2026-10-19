@@ -39,9 +39,9 @@ class RepositorioUsuarios:
         )
         return resultado.scalar_one_or_none()
 
-    async def crear(self, nombre: str, email: str) -> Usuario:
-        """Persiste un nuevo usuario y lo devuelve con su id asignado."""
-        usuario = Usuario(nombre=nombre, email=email)
+    async def crear(self, nombre: str, email: str, password_hash: str) -> Usuario:
+        """Persiste un nuevo usuario con su hash de contraseña y lo devuelve con su id asignado."""
+        usuario = Usuario(nombre=nombre, email=email, password_hash=password_hash)
         self._sesion.add(usuario)
         await self._sesion.flush()   # Obtiene el id generado sin hacer commit
         await self._sesion.refresh(usuario)

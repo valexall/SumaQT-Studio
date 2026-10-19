@@ -44,7 +44,9 @@ class HeroSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        Row(
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
           children: [
             const Text(
               'Automático, rápido y ',
