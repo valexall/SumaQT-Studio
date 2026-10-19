@@ -254,7 +254,7 @@ function sameFileIdentity(actual, expected) {
   const hasIdentity = (entry) => entry?.ino !== undefined && entry.ino !== 0 && entry.ino !== 0n;
   return hasIdentity(actual)
     && hasIdentity(expected)
-    && actual.dev === expected.dev
+    && (process.platform === 'win32' || actual.dev === expected.dev)
     && actual.ino === expected.ino;
 }
 
@@ -286,7 +286,7 @@ function assertOwnedDeliveryLock(state, ownedLock, operation, { verifyReceipt = 
     });
   }
   if (captured.status !== 'captured'
-    || captured.identity.device !== ownedLock.identity.dev
+    || (process.platform !== 'win32' && captured.identity.device !== ownedLock.identity.dev)
     || captured.identity.inode !== ownedLock.identity.ino) {
     if (captured?.binding) releaseRegularFileBinding(captured.binding);
     throw deliveryOwnershipFailure(state, operation, 'an owned lock path no longer names the entry created by this attempt', {
@@ -364,7 +364,7 @@ function assertDeliveryOwnership(ownership, operation, { allowInitializing = fal
     }
     if (captured.status !== 'captured'
       || !state.pendingIdentity
-      || captured.identity.device !== state.pendingIdentity.dev
+      || (process.platform !== 'win32' && captured.identity.device !== state.pendingIdentity.dev)
       || captured.identity.inode !== state.pendingIdentity.ino) {
       if (captured?.binding) releaseRegularFileBinding(captured.binding);
       throw deliveryOwnershipFailure(state, operation, 'the delivery journal no longer names the entry created by this attempt', {
@@ -932,7 +932,7 @@ function removeOwnedEmptyStagingDirectory(directory, identity, { throwOnFailure 
   if (!current.isDirectory()
     || current.isSymbolicLink()
     || current.ino === 0n
-    || current.dev !== identity.device
+    || (process.platform !== 'win32' && current.dev !== identity.device)
     || current.ino !== identity.inode) return false;
   if (!stagingDirectoryAppearsEmpty(directory)) return false;
   const quarantine = createStagingRetirementQuarantine(path.dirname(directory));
@@ -953,7 +953,7 @@ function removeOwnedEmptyStagingDirectory(directory, identity, { throwOnFailure 
   if (!moved.isDirectory()
     || moved.isSymbolicLink()
     || moved.ino === 0n
-    || moved.dev !== identity.device
+    || (process.platform !== 'win32' && moved.dev !== identity.device)
     || moved.ino !== identity.inode) {
     // A claimant won the public move boundary. Preserve it under the private
     // quarantine name; directories have no portable no-clobber restore link.

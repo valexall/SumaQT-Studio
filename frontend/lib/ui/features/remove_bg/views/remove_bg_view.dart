@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../auth/view_models/auth_view_model.dart';
 import '../view_models/remove_bg_view_model.dart';
 import 'widgets/gradient_button.dart';
 import 'widgets/hero_section.dart';
@@ -15,10 +16,12 @@ class RemoveBgView extends StatelessWidget {
     super.key,
     required this.viewModel,
     this.mostrarAppBar = true,
+    this.authViewModel,
   });
 
   final RemoveBgViewModel viewModel;
   final bool mostrarAppBar;
+  final AuthViewModel? authViewModel;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +30,7 @@ class RemoveBgView extends StatelessWidget {
       builder: (context, _) {
         return Scaffold(
           backgroundColor: AppColors.surface,
-          appBar: mostrarAppBar ? _buildAppBar() : null,
+          appBar: mostrarAppBar ? _buildAppBar(context) : null,
           body: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(
@@ -52,7 +55,7 @@ class RemoveBgView extends StatelessWidget {
 
   // ── AppBar ────────────────────────────────────────────────────────
 
-  AppBar _buildAppBar() {
+  AppBar _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -86,31 +89,83 @@ class RemoveBgView extends StatelessWidget {
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () {},
-          child: const Text(
-            'Iniciar sesión',
-            style: TextStyle(color: Colors.black87),
+        if (authViewModel != null && authViewModel!.hasUserSession) ...[
+          Center(
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                  child: Text(
+                    (authViewModel!.currentUser?.nombre.isNotEmpty ?? false)
+                        ? authViewModel!.currentUser!.nombre[0].toUpperCase()
+                        : 'U',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  authViewModel!.currentUser?.nombre ?? 'Usuario',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF1F3F5),
-              foregroundColor: Colors.black87,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+          const SizedBox(width: 12),
+          TextButton.icon(
+            onPressed: () => authViewModel!.logout(),
+            icon: const Icon(Icons.logout, size: 18, color: Colors.redAccent),
+            label: const Text(
+              'Cerrar sesión',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+          const SizedBox(width: 16),
+        ] else ...[
+          TextButton(
+            onPressed: () {
+              if (authViewModel != null) {
+                if (!authViewModel!.isLoginMode) authViewModel!.toggleMode();
+                authViewModel!.logout();
+              }
+            },
+            child: const Text(
+              'Iniciar sesión',
+              style: TextStyle(color: Colors.black87),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: ElevatedButton(
+              onPressed: () {
+                if (authViewModel != null) {
+                  if (authViewModel!.isLoginMode) authViewModel!.toggleMode();
+                  authViewModel!.logout();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: const Text(
+                'Registrarse',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-            child: const Text(
-              'Registrarse',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
           ),
-        ),
+        ],
       ],
     );
   }
